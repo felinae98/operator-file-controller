@@ -1,0 +1,10 @@
+apiVersion: file.felinae98.cn/v1
+kind: DirFile
+metadata:
+  name: dirfile-sample
+spec:
+  dir: /tmp/a
+  files:
+    - file1
+    - file2
+    - file3

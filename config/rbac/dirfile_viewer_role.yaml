@@ -1,0 +1,20 @@
+# permissions for end users to view dirfiles.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dirfile-viewer-role
+rules:
+- apiGroups:
+  - file.felinae98.cn
+  resources:
+  - dirfiles
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - file.felinae98.cn
+  resources:
+  - dirfiles/status
+  verbs:
+  - get

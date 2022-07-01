@@ -1,0 +1,16 @@
+domain: felinae98.cn
+layout:
+- go.kubebuilder.io/v3
+projectName: file-controller
+repo: felinae98.cn/file-controller
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: felinae98.cn
+  group: file
+  kind: DirFile
+  path: felinae98.cn/file-controller/api/v1
+  version: v1
+version: "3"
