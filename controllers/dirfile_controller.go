@@ -104,8 +104,8 @@ func (r *DirFileReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	// TODO(user): your logic here
 	var podList corev1.PodList
 	// namespace "file-keeper" is hard-encoded
-	if err := r.List(ctx, &podList, client.InNamespace(podNamespace), client.MatchingLabels{"name": podNameLabel}); err != nil {
-		logger.Error(err, "Pod in namespace PodNamespace with name=PodNameLabel not found", "PodNamespace", podNamespace, "PodNameLabel", podNameLabel)
+	if err := r.List(ctx, &podList, client.InNamespace(podNamespace), client.MatchingLabels{"name": podNameLabel}); err != nil || len(podList.Items) == 0 {
+		logger.Error(err, "Pod in namespace with label not found", "PodNamespace", podNamespace, "PodNameLabel", podNameLabel)
 		return ctrl.Result{}, err
 	}
 	targetStatus := make(map[string][]string)
