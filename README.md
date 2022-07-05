@@ -1,5 +1,5 @@
 # file-controller
-// TODO(user): Add simple overview of use/purpose
+An operator to make sure a given list of file in given directory exists (create them when not exists)
 
 ## Description
 // TODO(user): An in-depth paragraph about your project and overview of use

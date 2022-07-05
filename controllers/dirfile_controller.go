@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
@@ -48,6 +49,7 @@ type DirFileReconciler struct {
 	Scheme     *runtime.Scheme
 }
 
+// Execute given cmd in pod with podName and namespace, returns (stdout, stderr, error)
 func (r *DirFileReconciler) podExec(podName string, namespace string, cmd []string) (string, string, error) {
 	execReq := r.RESTClient.Post().
 		Namespace(namespace).
@@ -73,7 +75,88 @@ func (r *DirFileReconciler) podExec(podName string, namespace string, cmd []stri
 		Stderr: &stderr,
 	})
 	return stdout.String(), stderr.String(), err
+}
 
+// Get DirFile Object of ctrl.Request
+func (r *DirFileReconciler) getDirFile(ctx context.Context, req ctrl.Request) (*filev1.DirFile, error) {
+	var dirFile filev1.DirFile
+	if err := r.Get(ctx, req.NamespacedName, &dirFile); err != nil {
+		return nil, err
+	}
+	return &dirFile, nil
+}
+
+// Get PodList of DaemonSet
+func (r *DirFileReconciler) getPodList(ctx context.Context) (*corev1.PodList, error) {
+	var podList corev1.PodList
+	// namespace "file-keeper" is hard-encoded
+	if err := r.List(ctx, &podList, client.InNamespace(podNamespace), client.MatchingLabels{"name": podNameLabel}); err != nil {
+		return nil, err
+	}
+	return &podList, nil
+}
+
+// Return files in given directory, create the directory if it does not exist
+func (r *DirFileReconciler) createDirAndListFile(logger logr.Logger, nodeName, podName, podNamespace, dirPath string) ([]string, error) {
+	stdout, stderr, err := r.podExec(podName, podNamespace, []string{"ls", "-a", dirPath})
+	var fileList []string
+	if err != nil && strings.Contains(stderr, "No such file or directory") {
+		// Dir does not exist
+		logger.Info("Dir does not exist, creating", "dirPath", dirPath, "node", nodeName)
+		_, dirCreationStderr, dirCreationErr := r.podExec(podName, podNamespace, []string{"mkdir", "-p", dirPath})
+		if dirCreationErr != nil {
+			logger.Error(dirCreationErr, "failed to create directory", "dirPath", dirPath, "stderr", dirCreationStderr, "node", nodeName)
+			return nil, dirCreationErr
+		}
+		fileList = make([]string, 0)
+		return fileList, nil
+	} else if err != nil {
+		// Query file error
+		logger.Error(err, "Exec cmd error", "podname", podName)
+		return nil, err
+	}
+
+	// filter out "." and "..", because `ls -a` returns "." and  ".." which are not files
+	fullList := strings.Split(strings.Trim(stdout, "\n "), "\n")
+	fileList = make([]string, 0, len(fullList)-2)
+	for _, file := range fullList {
+		if file != "." && file != ".." {
+			fileList = append(fileList, file)
+		}
+	}
+	return fileList, nil
+}
+
+// Compare file list in DirFile Spec with current file in directory, returns list of file to create
+func (r *DirFileReconciler) getFilesToCreate(targetFileList, currentFileList []string) []string {
+	curFileSet := make(map[string]bool)
+	for _, existingFile := range currentFileList {
+		curFileSet[existingFile] = true
+	}
+	filesToCreate := make([]string, 0)
+	for _, targetFile := range targetFileList {
+		if !curFileSet[targetFile] {
+			// targetFile not exists, create one
+			filesToCreate = append(filesToCreate, targetFile)
+		}
+	}
+	return filesToCreate
+}
+
+// Touch files in dirPath, returns err
+func (r *DirFileReconciler) touchFiles(logger logr.Logger, nodeName, podName, podNamespace, dirPath string, createFileList []string) error {
+	cmdSlice := []string{"touch"}
+	for _, file := range createFileList {
+		cmdSlice = append(cmdSlice, filepath.Join(dirPath, file))
+	}
+
+	_, fileCreateStderr, fileCreateErr := r.podExec(podName, podNamespace, cmdSlice)
+	if fileCreateErr != nil {
+		logger.Error(fileCreateErr, "create file error", "createFileList", createFileList, "node", nodeName, "stderr", fileCreateStderr)
+		return fileCreateErr
+	} else {
+		return nil
+	}
 }
 
 //+kubebuilder:rbac:groups=file.felinae98.cn,resources=dirfiles,verbs=get;list;watch;create;update;patch;delete
@@ -82,94 +165,54 @@ func (r *DirFileReconciler) podExec(podName string, namespace string, cmd []stri
 //+kubebuilder:rbac:groups=core,resources=pod,verbs=get;list;patch;delete
 //+kubebuilder:rbac:groups=core,resources=pod/exec,verbs=create
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the DirFile object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.1/pkg/reconcile
 func (r *DirFileReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	logger.Info("Reconcile triggered, request: req", "req", req)
-	var dirFile filev1.DirFile
-	if err := r.Get(ctx, req.NamespacedName, &dirFile); err != nil {
+
+	// Get corresponding DirFile Object, stop when
+	dirFile, err := r.getDirFile(ctx, req)
+	if err != nil {
 		// DirFile object not exist
 		logger.Error(err, "DirFile not found, name: Name", "Name", req.NamespacedName)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// TODO(user): your logic here
-	var podList corev1.PodList
-	// namespace "file-keeper" is hard-encoded
-	if err := r.List(ctx, &podList, client.InNamespace(podNamespace), client.MatchingLabels{"name": podNameLabel}); err != nil || len(podList.Items) == 0 {
+	podList, err := r.getPodList(ctx)
+	if err != nil || len(podList.Items) == 0 {
 		logger.Error(err, "Pod in namespace with label not found", "PodNamespace", podNamespace, "PodNameLabel", podNameLabel)
 		return ctrl.Result{}, err
 	}
-	targetStatus := make(map[string][]string)
+
+	targetStatus := make(map[string][]string) // new DirFile Status to update
+
 	for _, pod := range podList.Items {
 		nodeName := pod.Spec.NodeName
 		podName := pod.Name
-		var _ = nodeName
 		dirPath := filepath.Join(podMountPoint, dirFile.Spec.Dir)
-		stdout, stderr, err := r.podExec(podName, podNamespace, []string{"ls", "-a", dirPath})
-		var fileList []string
-		if err != nil && strings.Contains(stderr, "No such file or directory") {
-			// Dir not exist
-			logger.Info("Dir not exsits, creating", "dirPath", dirPath, "node", nodeName)
-			_, dirCreationStderr, dirCreationErr := r.podExec(podName, podNamespace, []string{"mkdir", "-p", dirPath})
-			if dirCreationErr != nil {
-				logger.Error(dirCreationErr, "failed to create directory", "dirPath", dirPath, "stderr", dirCreationStderr, "node", nodeName)
-				return ctrl.Result{}, dirCreationErr
-			}
-			fileList = make([]string, 0)
-		} else if err != nil {
-			logger.Error(err, "Exec cmd error", "podname", podName)
+
+		fileList, err := r.createDirAndListFile(logger, nodeName, podName, podNamespace, dirPath)
+		if err != nil {
 			return ctrl.Result{}, err
 		}
-		if len(stdout) == 0 {
-			fileList = make([]string, 0)
-		} else {
-			// filter "." and ".."
-			fullList := strings.Split(strings.Trim(stdout, "\n "), "\n")
-			fileList = make([]string, 0, len(fullList)-2)
-			for _, file := range fullList {
-				if file != "." && file != ".." {
-					fileList = append(fileList, file)
-				}
-			}
-		}
-		// Find not existing file
-		curFileSet := make(map[string]bool)
-		for _, existingFile := range fileList {
-			curFileSet[existingFile] = true
-		}
-		filesToCreate := make([]string, 0)
-		for _, targetFile := range dirFile.Spec.Files {
-			if !curFileSet[targetFile] {
-				// targetFile not exists, create one
-				filesToCreate = append(filesToCreate, targetFile)
-			}
-		}
+
+		filesToCreate := r.getFilesToCreate(dirFile.Spec.Files, fileList)
 		if len(filesToCreate) > 0 {
 			logger.Info("creating files", "filesToCreate", filesToCreate, "node", nodeName)
-			cmdSlice := []string{"touch"}
-			for _, file := range filesToCreate {
-				cmdSlice = append(cmdSlice, filepath.Join(dirPath, file))
-			}
-			_, fileCreateStderr, fileCreateErr := r.podExec(podName, podNamespace, cmdSlice)
-			if fileCreateErr != nil {
-				logger.Error(fileCreateErr, "create file error", "filesToCreate", filesToCreate, "node", nodeName, "stderr", fileCreateStderr)
+			err := r.touchFiles(logger, nodeName, podName, podNamespace, dirPath, filesToCreate)
+			if err != nil {
+				// error when create file, re-get files in dirPath, update Status
+				fileList, _ = r.createDirAndListFile(logger, nodeName, podName, podNamespace, dirPath)
 			} else {
+				// file created successfully
 				fileList = append(fileList, filesToCreate...)
 			}
 		}
+
 		targetStatus[nodeName] = fileList
 	}
+
 	dirFile.Status.ExistingFiles = targetStatus
-	if err := r.Status().Update(ctx, &dirFile); err != nil {
+	if err := r.Status().Update(ctx, dirFile); err != nil {
 		logger.Error(err, "unable to update DirFile status")
 	}
 
