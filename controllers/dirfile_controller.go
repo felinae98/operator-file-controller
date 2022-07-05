@@ -172,7 +172,7 @@ func (r *DirFileReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	// Get corresponding DirFile Object, exist when no object was found
 	dirFile, err := r.getDirFile(ctx, req)
 	if err != nil {
-		// DirFile object not exist
+		// DirFile object does not exist
 		logger.Error(err, "DirFile not found", "Name", req.NamespacedName)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
@@ -200,10 +200,10 @@ func (r *DirFileReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			logger.Info("creating files", "filesToCreate", filesToCreate, "node", nodeName)
 			err := r.touchFiles(logger, nodeName, podName, podNamespace, dirPath, filesToCreate)
 			if err != nil {
-				// error when create file, re-get files in dirPath, update Status
+				// error when create files, re-get files in dirPath, update Status
 				fileList, _ = r.createDirAndListFile(logger, nodeName, podName, podNamespace, dirPath)
 			} else {
-				// file created successfully
+				// files created successfully
 				fileList = append(fileList, filesToCreate...)
 			}
 		}
@@ -216,7 +216,6 @@ func (r *DirFileReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		logger.Error(err, "unable to update DirFile status")
 	}
 
-	// return ctrl.Result{}, nil
 	return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 }
 
