@@ -167,13 +167,13 @@ func (r *DirFileReconciler) touchFiles(logger logr.Logger, nodeName, podName, po
 
 func (r *DirFileReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
-	logger.Info("Reconcile triggered, request: req", "req", req)
+	logger.Info("Reconcile triggered", "req", req)
 
-	// Get corresponding DirFile Object, stop when
+	// Get corresponding DirFile Object, exist when no object was found
 	dirFile, err := r.getDirFile(ctx, req)
 	if err != nil {
 		// DirFile object not exist
-		logger.Error(err, "DirFile not found, name: Name", "Name", req.NamespacedName)
+		logger.Error(err, "DirFile not found", "Name", req.NamespacedName)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 

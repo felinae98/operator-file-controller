@@ -1,69 +1,62 @@
 # file-controller
-An operator to make sure a given list of file in given directory exists (create them when not exists)
+An operator to make sure a given list of file in given directory exists (create them when not exists).
 
 ## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+This operator watches `dirfiles.files.felinae98.cn` resource, and track files in `dir` and create file in `files`. For example,
+```yaml
+apiVersion: file.felinae98.cn/v1
+kind: DirFile
+metadata:
+  name: dirfile-sample
+spec:
+  dir: /tmp/a
+  files:
+    - file1
+    - file4
+```
+the operator will track files in `/tmp/a`, and make sure `/tmp/a/file1` and `/tmp/a/file2` exists. And the status of this resource shows the files in `/tmp/a` of each node.
 
 ## Getting Started
 You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
 **Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
 
-### Running on the cluster
-1. Install Instances of Custom Resources:
+### Basic Usage
+
+1. Install DaemonSet
+
+**Note**: The DaemonSet is not controlled by operator, you must make sure the DaemonSet was applied before install instances of cr.
+
+```sh
+kubectl apply -f daemonset.yaml
+```
+
+2. Install Custom Resource Definition
+
+```sh
+make install
+```
+
+3. Run Operator Locally
+
+```sh
+make run
+```
+
+4. Install Instances of Custom Resources:
 
 ```sh
 kubectl apply -f config/samples/
 ```
 
-2. Build and push your image to the location specified by `IMG`:
-	
-```sh
-make docker-build docker-push IMG=<some-registry>/file-controller:tag
-```
-	
-3. Deploy the controller to the cluster with the image specified by `IMG`:
+### Publish or Deploy to Cluster
 
-```sh
-make deploy IMG=<some-registry>/file-controller:tag
-```
-
-### Uninstall CRDs
-To delete the CRDs from the cluster:
-
-```sh
-make uninstall
-```
-
-### Undeploy controller
-UnDeploy the controller to the cluster:
-
-```sh
-make undeploy
-```
-
-## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
+Please refer to kubebuiler documentation for further information.
 
 ### How it works
 This project aims to follow the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
 
 It uses [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/) 
 which provides a reconcile function responsible for synchronizing resources untile the desired state is reached on the cluster 
-
-### Test It Out
-1. Install the CRDs into the cluster:
-
-```sh
-make install
-```
-
-2. Run your controller (this will run in the foreground, so switch to a new terminal if you want to leave it running):
-
-```sh
-make run
-```
-
-**NOTE:** You can also run this in one step by running: `make install run`
 
 ### Modifying the API definitions
 If you are editing the API definitions, generate the manifests such as CRs or CRDs using:
