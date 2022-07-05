@@ -16,6 +16,19 @@ spec:
 ```
 the operator will track files in `/tmp/a`, and make sure `/tmp/a/file1` and `/tmp/a/file2` exists. And the status of this resource shows the files in `/tmp/a` of each node.
 
+Assume that you have a cluster with two nodes, the `status` of `dirfile` resource will show as follows:
+```yaml
+Status:
+  Exsiting Files:
+    k8s-node1: # <- node name
+      file1 # <- file name of files in `/tmp/a` in k8s-node1
+      file4
+    k8s-node2:
+      file1
+      file4
+      t1 # additional file in k8s-node2
+```
+
 ## Getting Started
 You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
 **Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
