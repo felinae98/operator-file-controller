@@ -78,33 +78,14 @@ func (r *FileKeeperReconciler) podExec(podName string, namespace string, cmd []s
 	return stdout.String(), stderr.String(), err
 }
 
-// Get FileKeeper Object of ctrl.Request
-func (r *FileKeeperReconciler) getFileKeeper(ctx context.Context, req ctrl.Request) (*filev1.FileKeeper, error) {
-	var fileKeeper filev1.FileKeeper
-	if err := r.Get(ctx, req.NamespacedName, &fileKeeper); err != nil {
-		return nil, err
-	}
-	return &fileKeeper, nil
-}
-
-// Get PodList of DaemonSet
-func (r *FileKeeperReconciler) getPodList(ctx context.Context) (*corev1.PodList, error) {
-	var podList corev1.PodList
-	// namespace "file-keeper" is hard-encoded
-	if err := r.List(ctx, &podList, client.InNamespace(podNamespace), client.MatchingLabels{"name": podNameLabel}); err != nil {
-		return nil, err
-	}
-	return &podList, nil
-}
-
 func (r *FileKeeperReconciler) listFileInDir(logger logr.Logger, nodeName, podName, podNamespace, dirPath string) ([]string, error) {
 	stdout, stderr, err := r.podExec(podName, podNamespace, []string{"ls", "-a", dirPath})
 	var fileList []string
 	if err != nil && strings.Contains(stderr, "No such file or directory") {
 		// Dir does not exist
-        return nil, errors.New("Directory not found")
+		return nil, errors.New("Directory not found")
 	} else if err != nil {
-        err = errors.WithMessagef(err, "ls files error, stderr: %s", stderr)
+		err = errors.WithMessagef(err, "ls files error, stderr: %s", stderr)
 		logger.Error(err, "Exec cmd error", "podname", podName)
 		return nil, err
 	}
@@ -120,13 +101,13 @@ func (r *FileKeeperReconciler) listFileInDir(logger logr.Logger, nodeName, podNa
 }
 
 func (r *FileKeeperReconciler) createDir(logger logr.Logger, nodeName, podName, podNamespace, dirPath string) error {
-    _, stderr, err := r.podExec(podName, podNamespace, []string{"mkdir", "-p", dirPath})
-    if err != nil {
-        err = errors.WithMessagef(err, "Directory creation failed, stderr: %s", stderr)
-        logger.Error(err, "failed to create directory", "dirPath", dirPath, "node", nodeName)
-        return err
-    }
-    return nil
+	_, stderr, err := r.podExec(podName, podNamespace, []string{"mkdir", "-p", dirPath})
+	if err != nil {
+		err = errors.WithMessagef(err, "Directory creation failed, stderr: %s", stderr)
+		logger.Error(err, "failed to create directory", "dirPath", dirPath, "node", nodeName)
+		return err
+	}
+	return nil
 }
 
 // Compare file list in FileKeeper Spec with current file in directory, returns list of file to create
@@ -171,15 +152,16 @@ func (r *FileKeeperReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	logger := log.FromContext(ctx)
 	logger.Info("Reconcile triggered", "req", req)
 
-	// Get corresponding FileKeeper Object, exist when no object was found
-	fileKeeper, err := r.getFileKeeper(ctx, req)
-	if err != nil {
-		// FileKeeper object does not exist
+	// Get corresponding FileKeeper Object, exit when no object was found
+	var fileKeeper filev1.FileKeeper
+	if err := r.Get(ctx, req.NamespacedName, &fileKeeper); err != nil {
 		logger.Error(err, "FileKeeper not found", "Name", req.NamespacedName)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	podList, err := r.getPodList(ctx)
+	// Get PodList used by operator, exit when required pod does not exist
+	var podList corev1.PodList
+	err := r.List(ctx, &podList, client.InNamespace(podNamespace), client.MatchingLabels{"name": podNameLabel})
 	if err != nil || len(podList.Items) == 0 {
 		logger.Error(err, "Pod in namespace with label not found", "PodNamespace", podNamespace, "PodNameLabel", podNameLabel)
 		return ctrl.Result{}, err
@@ -193,14 +175,14 @@ func (r *FileKeeperReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		dirPath := filepath.Join(podMountPoint, fileKeeper.Spec.Dir)
 
 		fileList, err := r.listFileInDir(logger, nodeName, podName, podNamespace, dirPath)
-        if err.Error() == "Directory not found" {
-            logger.Info("Dir does not exist, creating", "dirPath", dirPath, "node", nodeName)
-            err = r.createDir(logger, nodeName, podName, podNamespace, dirPath)
-            if err != nil {
-                return ctrl.Result{}, err
-            }
-            fileList = make([]string, 0) // new directory should be empty
-        } else if err != nil {
+		if err != nil && err.Error() == "Directory not found" {
+			logger.Info("Dir does not exist, creating", "dirPath", dirPath, "node", nodeName)
+			err = r.createDir(logger, nodeName, podName, podNamespace, dirPath)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			fileList = make([]string, 0) // new directory should be empty
+		} else if err != nil {
 			return ctrl.Result{}, err
 		}
 
@@ -209,7 +191,7 @@ func (r *FileKeeperReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			logger.Info("creating files", "filesToCreate", filesToCreate, "node", nodeName)
 			err := r.batchTouchFiles(logger, nodeName, podName, podNamespace, dirPath, filesToCreate)
 			if err != nil {
-                logger.Error(err, "Unable to create files")
+				logger.Error(err, "Unable to create files")
 			} else {
 				fileList = append(fileList, filesToCreate...)
 			}
@@ -219,7 +201,7 @@ func (r *FileKeeperReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	fileKeeper.Status.ExistingFiles = targetStatus
-	if err := r.Status().Update(ctx, fileKeeper); err != nil {
+	if err := r.Status().Update(ctx, &fileKeeper); err != nil {
 		logger.Error(err, "unable to update FileKeeper status")
 	}
 
