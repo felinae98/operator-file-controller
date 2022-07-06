@@ -43,6 +43,8 @@ const (
 	podMountPoint    = "/mnt"
 )
 
+var dirNotExists = errors.New("directory does not exist")
+
 // FileKeeperReconciler reconciles a FileKeeper object
 type FileKeeperReconciler struct {
 	client.Client
@@ -85,7 +87,7 @@ func (r *FileKeeperReconciler) listFileInDir(logger logr.Logger, nodeName, podNa
 	var fileList []string
 	if err != nil && strings.Contains(stderr, "No such file or directory") {
 		// Dir does not exist
-		return nil, errors.New("Directory not found")
+		return nil, dirNotExists
 	} else if err != nil {
 		err = errors.WithMessagef(err, "ls files error, stderr: %s", stderr)
 		logger.Error(err, "Exec cmd error", "podname", podName)
@@ -177,7 +179,7 @@ func (r *FileKeeperReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		dirPath := filepath.Join(podMountPoint, fileKeeper.Spec.Dir)
 
 		fileList, err := r.listFileInDir(logger, nodeName, podName, podNamespace, dirPath)
-		if err != nil && err.Error() == "Directory not found" {
+		if err != nil && errors.Is(err, dirNotExists) {
 			logger.Info("Dir does not exist, creating", "dirPath", dirPath, "node", nodeName)
 			err = r.createDir(logger, nodeName, podName, podNamespace, dirPath)
 			if err != nil {
