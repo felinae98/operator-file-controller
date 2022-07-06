@@ -103,13 +103,13 @@ func main() {
 		setupLog.Error(err, "Unable to create REST client")
 	}
 
-	if err = (&controllers.DirFileReconciler{
+	if err = (&controllers.FileKeeperReconciler{
 		Client:     mgr.GetClient(),
 		RESTClient: restClient,
 		RESTConfig: mgr.GetConfig(),
 		Scheme:     mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "DirFile")
+		setupLog.Error(err, "unable to create controller", "controller", "FileKeeper")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

@@ -1,7 +1,7 @@
 apiVersion: file.felinae98.cn/v1
-kind: DirFile
+kind: FileKeeper
 metadata:
-  name: dirfile-sample
+  name: filekeeper-sample
 spec:
   dir: /tmp/a
   files:

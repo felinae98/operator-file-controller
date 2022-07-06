@@ -1,13 +1,13 @@
-# permissions for end users to edit dirfiles.
+# permissions for end users to edit filekeepers.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: dirfile-editor-role
+  name: filekeeper-editor-role
 rules:
 - apiGroups:
   - file.felinae98.cn
   resources:
-  - dirfiles
+  - filekeepers
   verbs:
   - create
   - delete
@@ -19,6 +19,6 @@ rules:
 - apiGroups:
   - file.felinae98.cn
   resources:
-  - dirfiles/status
+  - filekeepers/status
   verbs:
   - get

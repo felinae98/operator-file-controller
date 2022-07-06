@@ -23,7 +23,7 @@ rules:
 - apiGroups:
   - file.felinae98.cn
   resources:
-  - dirfiles
+  - filekeepers
   verbs:
   - create
   - delete
@@ -35,13 +35,13 @@ rules:
 - apiGroups:
   - file.felinae98.cn
   resources:
-  - dirfiles/finalizers
+  - filekeepers/finalizers
   verbs:
   - update
 - apiGroups:
   - file.felinae98.cn
   resources:
-  - dirfiles/status
+  - filekeepers/status
   verbs:
   - get
   - patch

@@ -10,7 +10,7 @@ resources:
   controller: true
   domain: felinae98.cn
   group: file
-  kind: DirFile
+  kind: FileKeeper
   path: felinae98.cn/file-controller/api/v1
   version: v1
 version: "3"

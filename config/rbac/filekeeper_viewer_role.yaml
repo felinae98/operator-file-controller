@@ -1,13 +1,13 @@
-# permissions for end users to view dirfiles.
+# permissions for end users to view filekeepers.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: dirfile-viewer-role
+  name: filekeeper-viewer-role
 rules:
 - apiGroups:
   - file.felinae98.cn
   resources:
-  - dirfiles
+  - filekeepers
   verbs:
   - get
   - list
@@ -15,6 +15,6 @@ rules:
 - apiGroups:
   - file.felinae98.cn
   resources:
-  - dirfiles/status
+  - filekeepers/status
   verbs:
   - get

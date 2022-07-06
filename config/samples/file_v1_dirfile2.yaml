@@ -1,9 +1,0 @@
-apiVersion: file.felinae98.cn/v1
-kind: DirFile
-metadata:
-  name: dirfile-sample-2
-spec:
-  dir: /tmp/b
-  files:
-    - f1
-    - f2

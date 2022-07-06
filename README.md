@@ -2,12 +2,12 @@
 An operator to make sure a given list of file in given directory exists (create them when not exists).
 
 ## Description
-This operator watches `dirfiles.files.felinae98.cn` resource, and track files in `dir` and create file in `files`. For example,
+This operator watches `filekeepers.files.felinae98.cn` resource, and track files in `dir` and create file in `files`. For example,
 ```yaml
 apiVersion: file.felinae98.cn/v1
-kind: DirFile
+kind: FileKeeper
 metadata:
-  name: dirfile-sample
+  name: filekeeper-sample
 spec:
   dir: /tmp/a
   files:
@@ -16,7 +16,7 @@ spec:
 ```
 the operator will track files in `/tmp/a`, and make sure `/tmp/a/file1` and `/tmp/a/file2` exists. And the status of this resource shows the files in `/tmp/a` of each node.
 
-Assume that you have a cluster with two nodes, the `status` of `dirfile` resource will show as follows:
+Assume that you have a cluster with two nodes, the `status` of `filekeeper` resource will show as follows:
 ```yaml
 Status:
   Exsiting Files:

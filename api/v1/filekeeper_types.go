@@ -23,8 +23,8 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// DirFileSpec defines the desired state of DirFile
-type DirFileSpec struct {
+// FileKeeperSpec defines the desired state of FileKeeper
+type FileKeeperSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
@@ -37,8 +37,8 @@ type DirFileSpec struct {
 	Files []string `json:"files"`
 }
 
-// DirFileStatus defines the observed state of DirFile
-type DirFileStatus struct {
+// FileKeeperStatus defines the observed state of FileKeeper
+type FileKeeperStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
@@ -49,24 +49,24 @@ type DirFileStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// DirFile is the Schema for the dirfiles API
-type DirFile struct {
+// FileKeeper is the Schema for the filekeepers API
+type FileKeeper struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   DirFileSpec   `json:"spec,omitempty"`
-	Status DirFileStatus `json:"status,omitempty"`
+	Spec   FileKeeperSpec   `json:"spec,omitempty"`
+	Status FileKeeperStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
-// DirFileList contains a list of DirFile
-type DirFileList struct {
+// FileKeeperList contains a list of FileKeeper
+type FileKeeperList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []DirFile `json:"items"`
+	Items           []FileKeeper `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&DirFile{}, &DirFileList{})
+	SchemeBuilder.Register(&FileKeeper{}, &FileKeeperList{})
 }
