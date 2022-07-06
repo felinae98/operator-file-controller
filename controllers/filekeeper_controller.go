@@ -37,9 +37,10 @@ import (
 )
 
 const (
-	podNamespace  = "file-keeper"
-	podNameLabel  = "file-loader-pod"
-	podMountPoint = "/mnt"
+	podNamespace     = "file-keeper"
+	podNameLabel     = "file-loader-pod"
+	podContainerName = "file-loader-pod"
+	podMountPoint    = "/mnt"
 )
 
 // FileKeeperReconciler reconciles a FileKeeper object
@@ -58,7 +59,7 @@ func (r *FileKeeperReconciler) podExec(podName string, namespace string, cmd []s
 		Name(podName).
 		SubResource("exec").
 		VersionedParams(&corev1.PodExecOptions{
-			Container: "file-loader-pod",
+			Container: podContainerName,
 			Command:   cmd,
 			Stdin:     false,
 			Stdout:    true,
@@ -78,6 +79,7 @@ func (r *FileKeeperReconciler) podExec(podName string, namespace string, cmd []s
 	return stdout.String(), stderr.String(), err
 }
 
+// List file name in given dirPath, returns slice of file name and error
 func (r *FileKeeperReconciler) listFileInDir(logger logr.Logger, nodeName, podName, podNamespace, dirPath string) ([]string, error) {
 	stdout, stderr, err := r.podExec(podName, podNamespace, []string{"ls", "-a", dirPath})
 	var fileList []string
@@ -159,7 +161,7 @@ func (r *FileKeeperReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// Get PodList used by operator, exit when required pod does not exist
+	// Get PodList used by operator, exit when required pods do not exist
 	var podList corev1.PodList
 	err := r.List(ctx, &podList, client.InNamespace(podNamespace), client.MatchingLabels{"name": podNameLabel})
 	if err != nil || len(podList.Items) == 0 {
