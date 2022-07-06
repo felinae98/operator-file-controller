@@ -127,6 +127,26 @@ func (r *DirFileReconciler) createDirAndListFile(logger logr.Logger, nodeName, p
 	return fileList, nil
 }
 
+func (r *DirFileReconciler) listFileInDir(logger logr.Logger, nodeName, podName, podNamespace, dirPath string) ([]string, error) {
+	stdout, stderr, err := r.podExec(podName, podNamespace, []string{"ls", "-a", dirPath})
+	var fileList []string
+	if err != nil && strings.Contains(stderr, "No such file or directory") {
+		// Dir does not exist
+		logger.Info("Dir does not exist, creating", "dirPath", dirPath, "node", nodeName)
+		_, dirCreationStderr, dirCreationErr := r.podExec(podName, podNamespace, []string{"mkdir", "-p", dirPath})
+		if dirCreationErr != nil {
+			logger.Error(dirCreationErr, "failed to create directory", "dirPath", dirPath, "stderr", dirCreationStderr, "node", nodeName)
+			return nil, dirCreationErr
+		}
+		fileList = make([]string, 0)
+		return fileList, nil
+	} else if err != nil {
+		// Query file error
+		logger.Error(err, "Exec cmd error", "podname", podName)
+		return nil, err
+	}
+}
+
 // Compare file list in DirFile Spec with current file in directory, returns list of file to create
 func (r *DirFileReconciler) getFilesToCreate(targetFileList, currentFileList []string) []string {
 	curFileSet := make(map[string]bool)
