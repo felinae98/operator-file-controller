@@ -42,6 +42,7 @@ import (
 var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
+    defaultNodeName = "node-debug"
 )
 
 func init() {
@@ -49,6 +50,14 @@ func init() {
 
 	utilruntime.Must(filev1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
+}
+
+func getNodeName() string {
+    nodeNameFromEnv := os.Getenv("NODE_NAME") 
+    if len(nodeNameFromEnv)  == 0 {
+        return defaultNodeName
+    }
+    return nodeNameFromEnv
 }
 
 func main() {
@@ -108,6 +117,7 @@ func main() {
 		RESTClient: restClient,
 		RESTConfig: mgr.GetConfig(),
 		Scheme:     mgr.GetScheme(),
+        NodeName:   getNodeName(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "FileKeeper")
 		os.Exit(1)

@@ -6,7 +6,7 @@ metadata:
   name: system
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
   name: controller-manager
   namespace: system
@@ -24,6 +24,10 @@ spec:
       labels:
         control-plane: controller-manager
     spec:
+      volumes:
+        - name: mnt
+          hostPath:
+            path: /
       securityContext:
         runAsNonRoot: true
         # TODO(user): For common cases that do not require escalating privileges
@@ -33,13 +37,32 @@ spec:
         # versions < 1.19 or on vendors versions which do NOT support this field by default (i.e. Openshift < 4.11 ).
         # seccompProfile:
         #   type: RuntimeDefault
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
       containers:
       - command:
         - /manager
-        args:
-        - --leader-elect
+        # run multi operator, disable leader election
+        # args:
+        # - --leader-elect
         image: controller:latest
         name: manager
+        volumeMounts:
+          - name: mnt
+            mountPath: /mnt
+        env:
+          # expose nodeName and podName to container
+          # https://kubernetes.io/docs/tasks/inject-data-application/environment-variable-expose-pod-information/
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
