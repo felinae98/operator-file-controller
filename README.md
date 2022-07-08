@@ -33,26 +33,19 @@ Status:
 You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
 **Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
 
-### Basic Usage
+### Running on the Cluster
 
-1. Install DaemonSet
-
-**Note**: The DaemonSet is not controlled by operator, you must make sure the DaemonSet was applied before install instances of cr.
+2. Build and push your image to the location specific by `IMG`:
 
 ```sh
-kubectl apply -f daemonset.yaml
+make docker-build IMG=<some-registry>/file-controller
+make docker-push IMG=<some-registry>/file-controller
 ```
 
-2. Install Custom Resource Definition
+3. Deploy the controller to the cluster with the image specified by `IMG`:
 
 ```sh
-make install
-```
-
-3. Run Operator Locally
-
-```sh
-make run
+make deploy IMG=<some-registry>/file-controller
 ```
 
 4. Install Instances of Custom Resources:
@@ -61,9 +54,14 @@ make run
 kubectl apply -f config/samples/
 ```
 
-### Publish or Deploy to Cluster
+### Undeploy
+UnDeploy the controller to the cluster:
 
-Please refer to kubebuiler documentation for further information.
+```sh
+make undeploy
+```
+
+## Devlopment
 
 ### How it works
 This project aims to follow the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
