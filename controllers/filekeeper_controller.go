@@ -35,7 +35,7 @@ import (
 )
 
 const (
-	podMountPoint    = "/mnt"
+	podMountPoint = "/mnt"
 )
 
 var dirNotExists = errors.New("directory does not exist")
@@ -43,8 +43,8 @@ var dirNotExists = errors.New("directory does not exist")
 // FileKeeperReconciler reconciles a FileKeeper object
 type FileKeeperReconciler struct {
 	client.Client
-	Scheme     *runtime.Scheme
-	NodeName   string
+	Scheme   *runtime.Scheme
+	NodeName string
 }
 
 // Execute cmd in **current** pod, returns (stdout, stderr, error)
