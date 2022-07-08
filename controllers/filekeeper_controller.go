@@ -26,10 +26,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/remotecommand"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -38,9 +35,6 @@ import (
 )
 
 const (
-	podNamespace     = "file-keeper"
-	podNameLabel     = "file-loader-pod"
-	podContainerName = "file-loader-pod"
 	podMountPoint    = "/mnt"
 )
 
@@ -49,8 +43,6 @@ var dirNotExists = errors.New("directory does not exist")
 // FileKeeperReconciler reconciles a FileKeeper object
 type FileKeeperReconciler struct {
 	client.Client
-	RESTClient rest.Interface
-	RESTConfig *rest.Config
 	Scheme     *runtime.Scheme
 	NodeName   string
 }
@@ -64,34 +56,6 @@ func (r *FileKeeperReconciler) exec(ctx context.Context, cmd []string) (string, 
 	cmdObj.Stdout = &stdout
 	cmdObj.Stderr = &stderr
 	err := cmdObj.Run()
-	return stdout.String(), stderr.String(), err
-}
-
-// Execute given cmd in pod with podName and namespace, returns (stdout, stderr, error)
-func (r *FileKeeperReconciler) podExec(podName string, namespace string, cmd []string) (string, string, error) {
-	execReq := r.RESTClient.Post().
-		Namespace(namespace).
-		Resource("pods").
-		Name(podName).
-		SubResource("exec").
-		VersionedParams(&corev1.PodExecOptions{
-			Container: podContainerName,
-			Command:   cmd,
-			Stdin:     false,
-			Stdout:    true,
-			Stderr:    true,
-		}, runtime.NewParameterCodec(r.Scheme))
-
-	exec, err := remotecommand.NewSPDYExecutor(r.RESTConfig, "POST", execReq.URL())
-	if err != nil {
-		return "", "", err
-	}
-	var stdout, stderr bytes.Buffer
-	err = exec.Stream(remotecommand.StreamOptions{
-		Stdin:  nil,
-		Stdout: &stdout,
-		Stderr: &stderr,
-	})
 	return stdout.String(), stderr.String(), err
 }
 
