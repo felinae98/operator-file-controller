@@ -38,6 +38,23 @@ const (
 	podMountPoint = "/mnt"
 )
 
+// retry fn attempts times most
+func retry(logger logr.Logger, attempts int, fn func() error) error {
+	errorTimes := 0
+	for {
+		if err := fn(); err != nil {
+			errorTimes += 1
+			err = errors.Wrapf(err, "error times: %v", errorTimes)
+			logger.Error(err, "function call error")
+			if errorTimes > attempts {
+				return err
+			}
+		} else {
+            return nil
+        }
+	}
+}
+
 var dirNotExists = errors.New("directory does not exist")
 
 // FileKeeperReconciler reconciles a FileKeeper object
@@ -180,10 +197,14 @@ func (r *FileKeeperReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 	}
 
-	if err := r.updateNodeStatus(ctx, &fileKeeper, r.NodeName, fileList); err != nil {
+	if err := retry(logger, 3, func() error {
+		return r.updateNodeStatus(ctx, &fileKeeper, r.NodeName, fileList)
+	}); err != nil {
 		logger.Error(err, "Unable to patch status", "nodeName", r.NodeName)
 	}
 
+	// In order to watch the changing of file in dirPath, the Reconcile func should run periodically.
+	// Reconcile will re-run after 10s to `ls` the files in dirPath and update FileKeeper status.
 	return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 }
 
