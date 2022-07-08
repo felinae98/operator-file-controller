@@ -40,9 +40,9 @@ import (
 )
 
 var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
-    defaultNodeName = "node-debug"
+	scheme          = runtime.NewScheme()
+	setupLog        = ctrl.Log.WithName("setup")
+	defaultNodeName = "node-debug"
 )
 
 func init() {
@@ -53,11 +53,11 @@ func init() {
 }
 
 func getNodeName() string {
-    nodeNameFromEnv := os.Getenv("NODE_NAME") 
-    if len(nodeNameFromEnv)  == 0 {
-        return defaultNodeName
-    }
-    return nodeNameFromEnv
+	nodeNameFromEnv := os.Getenv("NODE_NAME")
+	if len(nodeNameFromEnv) == 0 {
+		return defaultNodeName
+	}
+	return nodeNameFromEnv
 }
 
 func main() {
@@ -117,7 +117,7 @@ func main() {
 		RESTClient: restClient,
 		RESTConfig: mgr.GetConfig(),
 		Scheme:     mgr.GetScheme(),
-        NodeName:   getNodeName(),
+		NodeName:   getNodeName(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "FileKeeper")
 		os.Exit(1)

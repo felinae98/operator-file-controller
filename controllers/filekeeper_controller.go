@@ -52,19 +52,19 @@ type FileKeeperReconciler struct {
 	RESTClient rest.Interface
 	RESTConfig *rest.Config
 	Scheme     *runtime.Scheme
-    NodeName    string
+	NodeName   string
 }
 
 // Execute cmd in **current** pod, returns (stdout, stderr, error)
 func (r *FileKeeperReconciler) exec(ctx context.Context, cmd []string) (string, string, error) {
-    name := cmd[0]
-    args := cmd[1:]
-    cmdObj := exec.CommandContext(ctx, name, args...)
-    var stdout, stderr bytes.Buffer
-    cmdObj.Stdout = &stdout
-    cmdObj.Stderr = &stderr
-    err := cmdObj.Run()
-    return stdout.String(), stderr.String(), err
+	name := cmd[0]
+	args := cmd[1:]
+	cmdObj := exec.CommandContext(ctx, name, args...)
+	var stdout, stderr bytes.Buffer
+	cmdObj.Stdout = &stdout
+	cmdObj.Stderr = &stderr
+	err := cmdObj.Run()
+	return stdout.String(), stderr.String(), err
 }
 
 // Execute given cmd in pod with podName and namespace, returns (stdout, stderr, error)
@@ -97,7 +97,7 @@ func (r *FileKeeperReconciler) podExec(podName string, namespace string, cmd []s
 
 // List file name in given dirPath, returns slice of file name and error
 func (r *FileKeeperReconciler) listFileInDir(ctx context.Context, logger logr.Logger, dirPath string) ([]string, error) {
-    stdout, stderr, err := r.exec(ctx, []string{"ls", "-a", dirPath})
+	stdout, stderr, err := r.exec(ctx, []string{"ls", "-a", dirPath})
 	var fileList []string
 	if err != nil && strings.Contains(stderr, "No such file or directory") {
 		// Dir does not exist
@@ -119,7 +119,7 @@ func (r *FileKeeperReconciler) listFileInDir(ctx context.Context, logger logr.Lo
 }
 
 func (r *FileKeeperReconciler) createDir(ctx context.Context, logger logr.Logger, dirPath string) error {
-    _, stderr, err := r.exec(ctx, []string{"mkdir", "-p", dirPath})
+	_, stderr, err := r.exec(ctx, []string{"mkdir", "-p", dirPath})
 	if err != nil {
 		err = errors.WithMessagef(err, "Directory creation failed, stderr: %s", stderr)
 		logger.Error(err, "failed to create directory", "dirPath", dirPath, "node", r.NodeName)
@@ -151,7 +151,7 @@ func (r *FileKeeperReconciler) batchTouchFiles(ctx context.Context, logger logr.
 		cmdSlice = append(cmdSlice, filepath.Join(dirPath, file))
 	}
 
-    _, stderr, err := r.exec(ctx, cmdSlice)
+	_, stderr, err := r.exec(ctx, cmdSlice)
 	if err != nil {
 		logger.Error(err, "create file error", "createFileList", createFileList, "node", r.NodeName, "stderr", stderr)
 		return err
@@ -164,14 +164,14 @@ func (r *FileKeeperReconciler) batchTouchFiles(ctx context.Context, logger logr.
 // Because multi operator update cr status simultaneously, and every operator update Status.ExistingFiles[node name of operator]
 // use k8s json merge patch is enough to avoid updating conflict
 func (r *FileKeeperReconciler) updateNodeStatus(ctx context.Context, originFileKeeper *filev1.FileKeeper, nodeName string, files []string) error {
-    newFileKeeper := originFileKeeper.DeepCopy()
-    if newFileKeeper.Status.ExistingFiles == nil {
-        newFileKeeper.Status.ExistingFiles = make(map[string][]string)
-    }
-    newFileKeeper.Status.ExistingFiles[nodeName] = files
-    patch := client.MergeFrom(originFileKeeper)
-    err := r.Status().Patch(ctx, newFileKeeper, patch)
-    return err
+	newFileKeeper := originFileKeeper.DeepCopy()
+	if newFileKeeper.Status.ExistingFiles == nil {
+		newFileKeeper.Status.ExistingFiles = make(map[string][]string)
+	}
+	newFileKeeper.Status.ExistingFiles[nodeName] = files
+	patch := client.MergeFrom(originFileKeeper)
+	err := r.Status().Patch(ctx, newFileKeeper, patch)
+	return err
 }
 
 //+kubebuilder:rbac:groups=file.felinae98.cn,resources=filekeepers,verbs=get;list;watch;create;update;patch;delete
@@ -191,34 +191,34 @@ func (r *FileKeeperReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-    dirPath := filepath.Join(podMountPoint, fileKeeper.Spec.Dir)
+	dirPath := filepath.Join(podMountPoint, fileKeeper.Spec.Dir)
 
-    fileList, err := r.listFileInDir(ctx, logger, dirPath)
-    if err != nil && errors.Is(err, dirNotExists) {
-        logger.Info("Dir does not exist, creating", "dirPath", dirPath, "node", r.NodeName)
-        err = r.createDir(ctx, logger, dirPath)
-        if err != nil {
-            return ctrl.Result{}, err
-        }
-        fileList = make([]string, 0) // new directory should be empty
-    } else if err != nil {
-        return ctrl.Result{}, err
-    }
+	fileList, err := r.listFileInDir(ctx, logger, dirPath)
+	if err != nil && errors.Is(err, dirNotExists) {
+		logger.Info("Dir does not exist, creating", "dirPath", dirPath, "node", r.NodeName)
+		err = r.createDir(ctx, logger, dirPath)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		fileList = make([]string, 0) // new directory should be empty
+	} else if err != nil {
+		return ctrl.Result{}, err
+	}
 
-    filesToCreate := r.getFilesToCreate(fileKeeper.Spec.Files, fileList)
-    if len(filesToCreate) > 0 {
-        logger.Info("creating files", "filesToCreate", filesToCreate, "node", r.NodeName)
-        err := r.batchTouchFiles(ctx, logger, dirPath, filesToCreate)
-        if err != nil {
-            logger.Error(err, "Unable to create files")
-        } else {
-            fileList = append(fileList, filesToCreate...)
-        }
-    }
+	filesToCreate := r.getFilesToCreate(fileKeeper.Spec.Files, fileList)
+	if len(filesToCreate) > 0 {
+		logger.Info("creating files", "filesToCreate", filesToCreate, "node", r.NodeName)
+		err := r.batchTouchFiles(ctx, logger, dirPath, filesToCreate)
+		if err != nil {
+			logger.Error(err, "Unable to create files")
+		} else {
+			fileList = append(fileList, filesToCreate...)
+		}
+	}
 
-    if err := r.updateNodeStatus(ctx, &fileKeeper, r.NodeName, fileList); err != nil {
-        logger.Error(err, "Unable to patch status", "nodeName", r.NodeName)
-    }
+	if err := r.updateNodeStatus(ctx, &fileKeeper, r.NodeName, fileList); err != nil {
+		logger.Error(err, "Unable to patch status", "nodeName", r.NodeName)
+	}
 
 	return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 }
