@@ -50,8 +50,8 @@ func retry(logger logr.Logger, attempts int, fn func() error) error {
 				return err
 			}
 		} else {
-            return nil
-        }
+			return nil
+		}
 	}
 }
 

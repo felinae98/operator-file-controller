@@ -6,9 +6,4 @@ spec:
   dir: /tmp/a
   files:
     - file1
-    - file4
-status:
-  exsitingFiles:
-    k8s-node1:
-    - file1
     - file2

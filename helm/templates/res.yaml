@@ -332,7 +332,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
-        image: registry.smtx.io/yuming.tang/file-keeper:latest
+        image: felinae98/file-keeper:latest
         imagePullPolicy: Always
         livenessProbe:
           httpGet:
