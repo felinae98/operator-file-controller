@@ -35,30 +35,22 @@ You’ll need a Kubernetes cluster to run against. You can use [KIND](https://si
 
 ### Running on the Cluster
 
-2. Build and push your image to the location specific by `IMG`:
+1. Install Chart using helm
 
 ```sh
-make docker-build IMG=<some-registry>/file-controller
-make docker-push IMG=<some-registry>/file-controller
+helm install <deploy name> ./helm
 ```
 
-3. Deploy the controller to the cluster with the image specified by `IMG`:
+2. Apply your FileKeeper CR
 
 ```sh
-make deploy IMG=<some-registry>/file-controller
+kubectl apply -f config/samples
 ```
 
-4. Install Instances of Custom Resources:
+3. Uninstall this operator
 
 ```sh
-kubectl apply -f config/samples/
-```
-
-### Undeploy
-UnDeploy the controller to the cluster:
-
-```sh
-make undeploy
+helm uninstall <deploy name>
 ```
 
 ## Devlopment
