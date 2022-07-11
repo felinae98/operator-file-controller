@@ -164,6 +164,7 @@ func (r *FileKeeperReconciler) updateNodeStatus(ctx context.Context, originFileK
 func (r *FileKeeperReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	logger.Info("Reconcile triggered", "req", req)
+	defaultRequeueResult := ctrl.Result{RequeueAfter: 10 * time.Second}
 
 	// Get corresponding FileKeeper Object, exit when no object was found
 	var fileKeeper filev1.FileKeeper
@@ -179,11 +180,13 @@ func (r *FileKeeperReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		logger.Info("Dir does not exist, creating", "dirPath", dirPath, "node", r.NodeName)
 		err = r.createDir(ctx, logger, dirPath)
 		if err != nil {
-			return ctrl.Result{}, err
+			logger.Error(err, "Create dir error", "dirPath", dirPath, "node", r.NodeName)
+			return defaultRequeueResult, nil
 		}
 		fileList = make([]string, 0) // new directory should be empty
 	} else if err != nil {
-		return ctrl.Result{}, err
+		logger.Error(err, "list file error", "dirPath", dirPath, "node", r.NodeName)
+		return defaultRequeueResult, nil
 	}
 
 	filesToCreate := r.getFilesToCreate(fileKeeper.Spec.Files, fileList)

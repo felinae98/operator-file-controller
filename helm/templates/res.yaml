@@ -332,7 +332,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
-        image: felinae98/file-keeper:latest
+        image: felinae98/file-keeper:0.1.2
         imagePullPolicy: Always
         livenessProbe:
           httpGet:
